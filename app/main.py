@@ -29,6 +29,10 @@ async def startup():
         from app.ingest import run_ingest
         run_ingest()
 
+    # Eagerly load index + model so first request is fast
+    from app.retrieve import _load
+    _load()
+
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))

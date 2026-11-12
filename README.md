@@ -22,13 +22,13 @@ pip install -r requirements.txt
 # 4. Copy and edit .env
 copy .env.example .env         # Windows
 # cp .env.example .env         # Mac/Linux
-# Edit .env: set LLM_PROVIDER and model/key
+# Edit .env: add your GROQ_API_KEY (get free key at console.groq.com)
 
-# 5. Build the index (first time, ~2-3 min on CPU)
+# 5. Build the index (first time, ~2 min on CPU)
 python -m app.ingest
 
 # 6. Start the server
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Open http://localhost:8000 in your browser.
@@ -43,9 +43,8 @@ Open http://localhost:8000 in your browser.
 # 2. Edit .env:
 LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_...
-GROQ_MODEL=llama3-8b-8192   # or llama3-70b-8192, mixtral-8x7b-32768
+GROQ_MODEL=qwen/qwen3.8-27b
 ```
-Groq runs open-source models (Llama 3, Mixtral) on custom hardware — responses in ~1-2 s.
 
 ### OpenAI
 ```
@@ -78,6 +77,7 @@ GEMINI_MODEL=gemini-1.5-flash
    - Linux: `hostname -I`
 
 2. Open `http://<your-laptop-ip>:8000` on your phone (same Wi-Fi).
+   The server prints the URL on startup: `LAN URL: http://192.168.x.x:8000`
 
 ### Troubleshooting
 - **Windows Firewall**: Allow port 8000 inbound:
@@ -98,7 +98,7 @@ docs/ (PDFs)
   pymupdf → raw text per page
   strip headers/footers (regex)
   detect section headings → section chunks
-  detect tables → one chunk per row (prefixed with header)
+  parse text-based tables → one chunk per row (prefixed with header)
   mark older revisions as superseded
   BAAI/bge-small-en-v1.5 → embeddings (numpy float32)
     │
@@ -111,8 +111,9 @@ data/chunks.json (chunk text + metadata)
   dense search: bge query embedding → cosine similarity (numpy dot product)
   BM25 search: rank_bm25 on tokenised chunk text
   Reciprocal Rank Fusion → combined ranking
-  boost current-revision chunks ×1.2
+  boost current-revision chunks x1.2
   expand SAF-SOP-003 §5+§6 together (LOTO rule + exception)
+  expand MNT §3 when §4 matches (gets spindle runout limit)
   drop superseded chunks when current exists for same doc_no
   threshold check: best dense score < 0.30 → refuse without calling LLM
     │
@@ -148,32 +149,32 @@ data/chunks.json (chunk text + metadata)
 
 ## My 5 Custom Questions — Actual App Answers
 
+*(Generated from eval/results.md — run `python -m eval.run_eval` to regenerate)*
+
 | # | Question | App Answer | Source | Pass |
 |---|---|---|---|---|
 | 6 | How many samples do I inspect for a lot of 200 pieces? | **13** | QC-SOP-014 Rev 04, p.1, §4 Sampling Plan *(superseded Rev 03 note shown)* | ✅ |
 | 7 | Where do I put rejected material? | **Tag with a RED tag and move to Quarantine Cage Q1, Stores Bay 3.** | QC-SOP-014 Rev 04, p.2, §8 | ✅ |
 | 8 | What should I do before replacing a hydraulic hose on the TX-200? | **Isolate the machine as per SAF-SOP-003 Lockout/Tagout. Never open the hydraulic circuit on a running or energised machine.** | MNT-MAN-CNC-02 Rev 02, p.1, §2 Safety First | ✅ |
 | 9 | A lot arrived without a Material Test Certificate. Can I inspect it? | **No. The lot is put on HOLD and must not be inspected or accepted until the MTC is received.** | QC-SOP-014 Rev 04, p.2, §2 *(superseded Rev 03 note shown)* | ✅ |
-| 10 | What is the maximum spindle speed of the TX-200? | **❌ I couldn't find this in the plant documents. Please check with your Quality / Maintenance / Safety owner.** | — (not in documents) | ✅ |
+| 10 | What is the maximum spindle speed of the TX-200? | **Not answerable — not in the plant documents. Please check with your Quality / Maintenance / Safety owner.** | — (not in documents) | ✅ |
 
-*Full eval output (11 questions, 10/11 pass) is in `eval/results.md`. Run `python -m eval.run_eval` to regenerate.*
+*Full eval output (11 questions, 10/11 pass) is in `eval/results.md`.*
 
 ---
 
 ## Known Limitations and Honest Notes
 
-1. **Small-model hallucination risk**: llama3.2:3b and qwen2.5:3b are small models. They sometimes ignore the "answer only from context" instruction and invent plausible-sounding values. Larger models (GPT-4o, Claude 3.5) are significantly more reliable. The citation-check layer catches some hallucinations but not all.
+1. **Hallucination risk**: The model (qwen/qwen3.8-27b via Groq) sometimes omits numeric values even when they are in the retrieved context. Larger models (GPT-4o, Claude 3.5) are more reliable. The citation-check layer catches fabricated quotes but not omissions.
 
-2. **Table parsing fragility**: pymupdf's `find_tables()` works well on digitally-created PDFs but fails on scanned or image-based PDFs. The fallback is line-based parsing, which is less accurate. If alarm codes or tolerance values are missing from answers, check the table chunks with `python -m app.ingest` output.
+2. **Table parsing is hand-tuned**: The table parser detects tables by known column headers ("Alarm", "Characteristic", "Frequency"). A PDF with different heading styles will silently produce no table chunks. Check `python -m app.ingest` output for table row counts.
 
-3. **Scanned PDFs**: If a PDF page has very little extracted text (logged as a warning), it may be a scanned image. This app does not do OCR. You would need to pre-process with Tesseract or Adobe Acrobat.
+3. **Scanned PDFs not supported**: If a PDF page has very little extracted text, it may be a scanned image. This app does not do OCR. Pre-process with Tesseract or Adobe Acrobat first.
 
-4. **Threshold tuning**: The default threshold (0.30) was chosen so all 5 sample questions pass and the 2 unanswerable ones fail. If you add new documents, re-run the eval and adjust `SIMILARITY_THRESHOLD` in `.env`.
+4. **Threshold tuning**: SIMILARITY_THRESHOLD=0.30 was tuned on 11 questions. Add new documents and re-run `python -m eval.run_eval` to check if it needs adjusting.
 
-5. **No authentication**: Anyone on the same Wi-Fi can access the app. Do not expose it to the internet without adding auth.
+5. **No authentication**: Anyone on the same Wi-Fi can access the app. Do not expose to the internet without adding auth.
 
-6. **No document update workflow**: To add or update a PDF, copy it to `docs/` and call `POST /reindex` or restart the server. There is no incremental update — the full index is rebuilt each time.
+6. **No incremental indexing**: To add or update a PDF, copy it to `docs/` and run `POST /reindex` or restart. The full index is rebuilt each time.
 
-7. **Section detection depends on heading format**: The chunker looks for headings like "1. Purpose" or "4.2 Sampling Plan". If a PDF uses a different heading style (bold text, Roman numerals, etc.), sections won't be detected and the whole document becomes one chunk.
-
-8. **I am least sure about**: The table row chunking for multi-page tables. The code merges rows across pages by collecting all rows from all pages and deduplicating the header row. This works for the TX-200 alarm table but could break if a table has a complex structure or if pymupdf assigns rows to the wrong page.
+7. **Groq free tier rate limits**: The free tier allows ~30 requests/minute. The eval adds a 5-second delay between questions to avoid 429 errors. For production use, a paid tier or locally-hosted model is recommended.

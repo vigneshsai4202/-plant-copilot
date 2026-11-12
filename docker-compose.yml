@@ -1,0 +1,11 @@
+services:
+  copilot:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./docs:/app/docs        # put PDFs here
+      - ./data:/app/data        # index persisted here
+    env_file:
+      - .env
+    restart: unless-stopped
