@@ -1,0 +1,78 @@
+[
+  {
+    "id": 1,
+    "question": "What is the recommended coolant concentration for the TX-200 CNC turning centre?",
+    "expected_facts": ["6", "8", "%"],
+    "expected_doc": "MNT-MAN-CNC-02",
+    "answerable": true
+  },
+  {
+    "id": 2,
+    "question": "The machine is showing alarm AL-104. What does it mean and what should the operator do?",
+    "expected_facts": ["way lube", "ISO VG 68", "MAX", "RESET"],
+    "expected_doc": "MNT-MAN-CNC-02",
+    "answerable": true
+  },
+  {
+    "id": 3,
+    "question": "Who is allowed to remove a lockout lock from a machine?",
+    "expected_facts": ["owner", "SF-12"],
+    "expected_doc": "SAF-SOP-003",
+    "answerable": true
+  },
+  {
+    "id": 4,
+    "question": "What is the outer diameter tolerance for the BH-220 bearing housing?",
+    "expected_facts": ["0.050", "90.000"],
+    "expected_doc": "QC-SOP-014",
+    "expected_revision": "04",
+    "answerable": true
+  },
+  {
+    "id": 5,
+    "question": "How often should spindle runout be checked, and who does it?",
+    "expected_facts": ["monthly", "0.005", "maintenance"],
+    "expected_doc": "MNT-MAN-CNC-02",
+    "answerable": true
+  },
+  {
+    "id": 6,
+    "question": "How many samples do I inspect for a lot of 200 pieces?",
+    "expected_facts": ["13"],
+    "forbidden_facts": ["5"],
+    "expected_doc": "QC-SOP-014",
+    "expect_superseded_note": true,
+    "answerable": true
+  },
+  {
+    "id": 7,
+    "question": "Where do I put rejected material?",
+    "expected_facts": ["Q1", "Quarantine"],
+    "forbidden_facts": ["Red Bin", "Gate 2"],
+    "expected_doc": "QC-SOP-014",
+    "answerable": true
+  },
+  {
+    "id": 8,
+    "question": "What should I do before replacing a hydraulic hose on the TX-200?",
+    "expected_facts": ["SAF-SOP-003", "Lockout", "hydraulic"],
+    "answerable": true
+  },
+  {
+    "id": 9,
+    "question": "A lot arrived without a Material Test Certificate. Can I inspect it?",
+    "expected_facts": ["HOLD", "MTC"],
+    "expected_doc": "QC-SOP-014",
+    "answerable": true
+  },
+  {
+    "id": 10,
+    "question": "What is the maximum spindle speed of the TX-200?",
+    "answerable": false
+  },
+  {
+    "id": 11,
+    "question": "What does alarm AL-999 mean?",
+    "answerable": false
+  }
+]

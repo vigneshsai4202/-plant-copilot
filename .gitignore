@@ -1,0 +1,15 @@
+.env
+data/
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+tmp*.txt
+debug_*.py
+debug_*.txt
+test_quick.py
+test_raw.py
+test_out.txt
+test_raw_out.txt
+server_log.txt

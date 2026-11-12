@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaveri Precision — Plant Copilot</title>
+<style>
+  :root {
+    --blue: #1a56db; --red: #e02424; --yellow: #fef3c7;
+    --yellow-border: #d97706; --green: #057a55; --gray: #6b7280;
+    --bg: #f9fafb; --card: #ffffff; --border: #e5e7eb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; font-size: 16px; background: var(--bg);
+         color: #111827; min-height: 100vh; }
+  header { background: var(--blue); color: #fff; padding: 14px 16px; }
+  header h1 { font-size: 1.1rem; font-weight: 700; }
+  header p  { font-size: 0.8rem; opacity: .8; margin-top: 2px; }
+  main { max-width: 720px; margin: 0 auto; padding: 16px; }
+
+  /* Ask box */
+  .ask-box { display: flex; gap: 8px; margin-bottom: 12px; }
+  #question { flex: 1; font-size: 16px; padding: 12px; border: 2px solid var(--border);
+              border-radius: 8px; resize: vertical; min-height: 56px; }
+  #question:focus { outline: none; border-color: var(--blue); }
+  #askBtn { background: var(--blue); color: #fff; border: none; border-radius: 8px;
+            padding: 12px 20px; font-size: 16px; font-weight: 600; cursor: pointer;
+            white-space: nowrap; align-self: flex-end; }
+  #askBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Examples */
+  .examples { margin-bottom: 16px; }
+  .examples p { font-size: 0.8rem; color: var(--gray); margin-bottom: 6px; }
+  .chip { display: inline-block; background: #eff6ff; border: 1px solid #bfdbfe;
+          border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; cursor: pointer;
+          margin: 3px 3px 3px 0; color: var(--blue); }
+  .chip:hover { background: #dbeafe; }
+
+  /* Loading */
+  #loading { display: none; text-align: center; padding: 24px; color: var(--gray); }
+  .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid #e5e7eb;
+             border-top-color: var(--blue); border-radius: 50%;
+             animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Answer */
+  #result { display: none; }
+  .answer-card { background: var(--card); border: 1px solid var(--border);
+                 border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .answer-card h2 { font-size: 0.75rem; text-transform: uppercase; color: var(--gray);
+                    letter-spacing: .05em; margin-bottom: 8px; }
+  .answer-text { font-size: 1rem; line-height: 1.6; white-space: pre-wrap; }
+  .not-found { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 10px;
+               padding: 16px; color: #991b1b; font-size: 0.95rem; line-height: 1.5; }
+
+  /* Superseded banner */
+  .sup-banner { background: var(--yellow); border: 1px solid var(--yellow-border);
+                border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
+                font-size: 0.88rem; color: #92400e; }
+  .sup-banner strong { display: block; margin-bottom: 2px; }
+
+  /* Source cards */
+  .sources-label { font-size: 0.75rem; text-transform: uppercase; color: var(--gray);
+                   letter-spacing: .05em; margin-bottom: 6px; }
+  details.src-card { background: var(--card); border: 1px solid var(--border);
+                     border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  details.src-card summary { padding: 10px 14px; cursor: pointer; font-size: 0.88rem;
+                              font-weight: 600; list-style: none; display: flex;
+                              justify-content: space-between; align-items: center; }
+  details.src-card summary::-webkit-details-marker { display: none; }
+  details.src-card summary .badge { font-size: 0.72rem; font-weight: 700; padding: 2px 7px;
+                                    border-radius: 12px; }
+  .badge-current { background: #d1fae5; color: var(--green); }
+  .badge-sup     { background: #fef3c7; color: #92400e; }
+  .src-body { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 0.85rem;
+              line-height: 1.5; }
+  .src-body .quote { background: #f3f4f6; border-left: 3px solid var(--blue);
+                     padding: 6px 10px; margin-top: 6px; font-style: italic;
+                     border-radius: 0 4px 4px 0; font-size: 0.82rem; }
+  .latency { font-size: 0.72rem; color: var(--gray); text-align: right; margin-top: 4px; }
+
+  /* Documents list */
+  .docs-section { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px; }
+  .docs-section h3 { font-size: 0.8rem; text-transform: uppercase; color: var(--gray);
+                     letter-spacing: .05em; margin-bottom: 8px; }
+  .doc-item { display: flex; justify-content: space-between; align-items: center;
+              padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+  .doc-item:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏭 Kaveri Precision — Plant Copilot</h1>
+  <p>Ask questions about quality, maintenance and safety SOPs</p>
+</header>
+<main>
+  <div class="ask-box">
+    <textarea id="question" placeholder="Ask a question about plant SOPs…" rows="2"></textarea>
+    <button id="askBtn" onclick="ask()">Ask</button>
+  </div>
+
+  <div class="examples">
+    <p>Try an example:</p>
+    <span class="chip" onclick="setQ(this)">What is the coolant concentration for TX-200?</span>
+    <span class="chip" onclick="setQ(this)">Alarm AL-104 — what does it mean?</span>
+    <span class="chip" onclick="setQ(this)">Who can remove a lockout lock?</span>
+    <span class="chip" onclick="setQ(this)">Outer diameter tolerance for BH-220?</span>
+    <span class="chip" onclick="setQ(this)">How often is spindle runout checked?</span>
+  </div>
+
+  <div id="loading"><div class="spinner"></div><p style="margin-top:8px">Searching documents…</p></div>
+
+  <div id="result"></div>
+
+  <div class="docs-section">
+    <h3>Documents loaded</h3>
+    <div id="docList">Loading…</div>
+  </div>
+</main>
+
+<script>
+async function ask() {
+  const q = document.getElementById('question').value.trim();
+  if (!q) return;
+  const btn = document.getElementById('askBtn');
+  btn.disabled = true;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('result').style.display = 'none';
+
+  try {
+    const res = await fetch('/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: q})
+    });
+    const data = await res.json();
+    renderResult(data);
+  } catch(e) {
+    document.getElementById('result').innerHTML =
+      `<div class="not-found">Network error: ${e.message}</div>`;
+    document.getElementById('result').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+
+function renderResult(d) {
+  const el = document.getElementById('result');
+  let html = '';
+
+  if (!d.answerable) {
+    html = `<div class="not-found">
+      ❌ I couldn't find this in the plant documents.<br>
+      Please check with your Quality / Maintenance / Safety owner.
+    </div>`;
+  } else {
+    if (d.superseded_note) {
+      html += `<div class="sup-banner">
+        <strong>⚠️ Old version note</strong>${escHtml(d.superseded_note)}
+      </div>`;
+    }
+    html += `<div class="answer-card">
+      <h2>Answer</h2>
+      <div class="answer-text">${escHtml(d.answer)}</div>
+    </div>`;
+
+    if (d.sources && d.sources.length) {
+      html += `<p class="sources-label">Sources (tap to expand)</p>`;
+      for (const s of d.sources) {
+        const isSup = s.revision && parseInt(s.revision) < 99; // heuristic; use badge from doc list
+        html += `<details class="src-card">
+          <summary>
+            <span>${escHtml(s.doc_no)} Rev ${escHtml(s.revision)} — p.${s.page} § ${escHtml(s.section)}</span>
+            <span class="badge badge-current">Rev ${escHtml(s.revision)}</span>
+          </summary>
+          <div class="src-body">
+            <div><strong>File:</strong> ${escHtml(s.file_name || '')}</div>
+            <div><strong>Score:</strong> ${s.score}</div>
+            ${s.quote ? `<div class="quote">"${escHtml(s.quote)}"</div>` : ''}
+          </div>
+        </details>`;
+      }
+    }
+    if (d.latency_ms) html += `<div class="latency">⏱ ${d.latency_ms} ms</div>`;
+  }
+
+  el.innerHTML = html;
+  el.style.display = 'block';
+  el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function setQ(el) {
+  document.getElementById('question').value = el.textContent;
+}
+
+document.getElementById('question').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+});
+
+// Load document list
+async function loadDocs() {
+  try {
+    const docs = await (await fetch('/documents')).json();
+    const el = document.getElementById('docList');
+    if (!docs.length) { el.textContent = 'No documents indexed.'; return; }
+    el.innerHTML = docs.map(d => `
+      <div class="doc-item">
+        <span>${escHtml(d.doc_no)} — ${escHtml(d.file_name)}</span>
+        <span class="badge ${d.superseded ? 'badge-sup' : 'badge-current'}">
+          ${d.superseded ? 'SUPERSEDED' : 'CURRENT'} Rev ${escHtml(d.revision)}
+        </span>
+      </div>`).join('');
+  } catch(e) { document.getElementById('docList').textContent = 'Could not load.'; }
+}
+loadDocs();
+</script>
+</body>
+</html>
