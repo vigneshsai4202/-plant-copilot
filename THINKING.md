@@ -1,158 +1,108 @@
 # THINKING.md — Kaveri Precision Plant Copilot
 
----
+## 1. Understand the user
 
-## 1. Understand the User
+**Who:** A shop-floor supervisor running a shift of roughly 10–30 people on CNC machines, assembly or inspection. Likely diploma/ITI trained, very hands-on, little time to read, and phone-first rather than computer-first. They are accountable if a safety or quality mistake happens.
 
-**Who is the supervisor?**
-A shop-floor supervisor at a manufacturing plant (e.g. Kaveri Precision Components, Hosur) is responsible for a shift of 10–30 workers running CNC machines, assembly lines, or quality inspection stations. They typically have a diploma or ITI qualification, strong hands-on experience, and limited time for reading. They are not software users by habit — their primary tools are a clipboard, a walkie-talkie, and a phone.
+**What they're trying to do:** Make quick decisions mid-shift and act on them with confidence, for example:
+- "Machine shows AL-104, what do I do?"
+- "A lot arrived without an MTC, can I inspect it?"
+- "How many samples for a lot of 200?"
+- "Before my technician replaces a hydraulic hose, what has to happen first?"
 
-**What are they trying to do?**
-During a shift they face dozens of quick decisions:
-- "This machine is showing AL-104 — what do I do?"
-- "A delivery just arrived without an MTC — can I accept it?"
-- "How many samples do I pull for this lot of 200 pieces?"
-- "My technician is about to replace a hydraulic hose — what's the safety checklist?"
+**What frustrates them today:**
+- SOPs live in binders or on a shared drive, and finding the right one takes minutes.
+- They need to know which document to open before they can search.
+- Multiple revisions exist, so it's easy to follow an old one.
+- One-handed phone use, possibly with gloves, makes long PDFs painful.
+- Calling the QC or maintenance manager for every question slows everyone down.
 
-They need the answer in under 30 seconds, with enough confidence to act on it immediately.
+**Assumptions (not verified with real users):**
+- Supervisors carry a smartphone and there is Wi-Fi on the floor.
+- They can type a short question in English.
+- The PDFs are digitally created, not scanned images.
+- I haven't spoken to a real supervisor. This is based on general research and reasonable assumptions.
 
-**What frustrates them today?**
-- SOPs are stored as PDFs on a shared drive or printed in a binder. Finding the right document takes 5–10 minutes.
-- Documents have multiple revisions. It is easy to act on an outdated procedure.
-- They cannot search across documents — they must know which document to open first.
-- On the shop floor, they are standing, often wearing gloves, using a phone with one hand. Long PDFs are unusable.
-- If they call the QC or Maintenance manager for every question, it slows everyone down.
-- They are accountable for safety incidents. Acting on wrong information is a serious risk.
+## 2. User journey (my first draft, before AI feedback)
 
-**Assumptions I am making:**
-- Supervisors have a smartphone on the shop floor (common in Indian manufacturing plants since ~2018).
-- The plant has Wi-Fi coverage on the shop floor (increasingly standard).
-- Supervisors can type a short question in English or will adapt quickly to doing so.
-- The plant's SOPs are digitally created PDFs (not scanned images).
+**Today (without the copilot):** CNC-07 shows an alarm. Rajan, the supervisor, walks to the office or binder, finds the maintenance manual, flips to alarms, and reads it. If he can't find it, he phones maintenance. This takes several minutes with the operator waiting.
 
----
-
-## 2. User Journey
-
-**Scenario**: It is 2:30 PM. The supervisor, Rajan, is doing his rounds. Machine CNC-07 shows alarm AL-104. His operator is waiting.
-
-**Step 1 — Rajan opens the app on his phone.**
-He has the URL bookmarked. The page loads in under 2 seconds (it is a static HTML page served locally).
-
-**Step 2 — He types his question.**
-"Machine showing AL-104 what to do"
-He taps Ask.
-
-**Step 3 — The app responds in ~2 seconds.**
-"AL-104 means Way lube oil level low. Top up with ISO VG 68 oil to the MAX mark, then press RESET. Machine can continue after reset."
-Below the answer: a source card — MNT-MAN-CNC-02 Rev 02, Section 6, with the exact quoted line.
-
-**Step 4 — Rajan verifies.**
-He taps the source card, sees the exact sentence from the manual. He is confident. He tells his operator to top up the oil.
-
-**Step 5 — Machine is back running in 5 minutes.**
+**With the copilot:**
+1. Rajan opens the app on his phone (bookmarked URL).
+2. He types "AL-104 what to do".
+3. The app returns a short answer from the maintenance manual and shows which document it came from.
+4. He acts on it and the machine resumes.
 
 **What could go wrong:**
-- Rajan types a vague question ("machine problem") → app returns a low-confidence or not-found response. He needs to be more specific.
-- The answer references an old revision → the app shows a yellow "Old version" banner. Rajan knows to check with QC.
-- The app is down (laptop asleep, Wi-Fi issue) → Rajan falls back to the binder. The app must be reliable or supervisors will stop trusting it.
-- The LLM hallucinates a value (e.g. wrong oil grade) → the citation check catches it, but not always. This is the biggest risk.
-- Rajan acts on the answer without reading the source → training needed: "always verify the source card for safety-critical actions."
+- Vague or misspelled question ("machine problem", "al104") and no useful match.
+- The answer isn't in the documents and the app has nowhere to send him.
+- The app quotes an old revision of an SOP.
+- The model gets a number wrong (oil grade, torque, tolerance).
+- The app is down (laptop asleep, bad Wi-Fi) and he stops trusting it.
+- He trusts the answer without checking and acts on a safety-critical step.
+- He isn't comfortable reading English.
 
----
+## 3. AI challenge
 
-## 3. AI Challenge
+I shared my draft with Claude and asked for a critical review. Below are the key points (paraphrased from the real conversation), then my reflection.
 
-**I asked Claude to critique my user journey as a skeptical product manager.**
+**Key points raised:**
+- Parts of my first write-up looked written after the build: the journey already used features I added later (source cards, version banner), so it didn't show my original thinking.
+- Specific claims (page loads in under 2 seconds, answer in about 2 seconds, machine running in 5 minutes) were not measured.
+- My reflection covered parsing and rate limits but not deployment problems.
+- A failed eval case (Q5) may have been my check being stricter than the question: "how often and who" was answered correctly, and the 0.005 mm limit was not asked for.
+- Excerpts that read like scripted dialogue would not be credible, so the section should reflect only what really happened.
 
-Key excerpts:
+**What I agreed with:**
+- All of the above. The version-awareness and verify-at-a-glance ideas matter most because acting on an outdated or wrong value is the supervisor's biggest risk, and the journey should be written plainly first.
 
-> **Claude**: "You assume Rajan can type a coherent question under pressure. On a noisy shop floor, with gloves on, after a machine alarm, he may type something like 'al104' or 'alarm oil'. Does your app handle that?"
+**What I disagreed with / pushed back on:**
+- [FILL: one honest point you disagree with, or write "Nothing major; the critique matched my own doubts."]
 
-> **My response**: Good point. I tested "al104" — BM25 retrieval picks it up correctly because it matches the exact token. But "alarm oil" is weaker. I added example chips on the UI so supervisors can tap a pre-written question instead of typing from scratch.
+**What I changed:**
+- Rewrote the journey in plain form without the later features.
+- Removed unmeasured timing claims and labelled targets as assumptions.
+- Added deployment challenges to the reflection.
+- Relaxed the Q5 eval check to match the question that was asked.
+- [FILL: any UI/prompt changes you really made, such as example chips, not-found message wording, README limitations.]
 
-> **Claude**: "Your journey assumes the answer is always in the documents. What happens when it isn't — and the supervisor needs to act anyway? Does the app tell him who to call?"
+## 4. The improvement I added, and why
 
-> **My response**: I agreed with this. I updated the not-found message to say "Please check with your Quality / Maintenance / Safety owner" — giving a clear next action instead of just a dead end.
+**Verify-at-a-glance sources + revision awareness.**
+- Under every answer the app shows expandable source cards with the exact quoted passage, document number, revision and page.
+- If a superseded revision also matched, a highlighted banner says so and names the current revision and effective date.
 
-> **Claude**: "The 'verify the source card' step assumes supervisors will actually do this. In practice, people trust the first answer they see. How do you prevent them from acting on a hallucinated value?"
+**Why:** Supervisors act immediately, and in this dataset the risk is real. QC-SOP-014 Rev 03 says 5 samples for every lot, while Rev 04 (effective 01-Jul-2026) uses a lot-size plan, e.g. 13 samples for 91–500 pieces. Rev 03 also says rejected material goes to the Red Bin by Gate 2, while Rev 04 says Quarantine Cage Q1. A plain RAG could mix these. The source cards let a supervisor check the exact sentence in seconds, and the banner stops them following an old procedure. Answers are built from the current revision only.
 
-> **My response**: I partially agreed. The citation check layer drops sources whose quotes don't appear in the retrieved text. But I was honest: a small model can still hallucinate the answer text itself. I added a note in the UI and README about this risk. I disagreed that this makes the app unusable — it is still far better than searching a PDF binder.
+## 5. Final reflection
 
-> **Claude**: "What about supervisors who don't read English well?"
+**What I'd build next**
+1. Voice input, since typing with gloves on a noisy floor is hard.
+2. Regional language support (Tamil/Hindi): translate the query, retrieve in English, translate the answer back.
+3. Incremental document updates instead of full reindexing.
+4. Simple authentication (PIN or QR), since anyone on the Wi-Fi can open it today.
+5. A thumbs up/down log to see which questions fail.
 
-> **My response**: Valid limitation I hadn't considered. I noted it as a future improvement (regional language support). Out of scope for this assignment but important for real deployment.
+**What I'm unsure about**
+- **Table parsing:** My parser is tuned to these four PDFs. A document with different layouts or headers could silently produce no table chunks.
+- **Hallucination:** The citation check verifies quotes exist in the retrieved text, but the model can still word the answer wrongly. A small model makes this worse.
+- **Threshold:** I tuned SIMILARITY_THRESHOLD (=[0.30]) on about [11] questions. That's too few to trust on a larger document set.
+- **Real-user fit:** I haven't tested with an actual supervisor.
 
-**What I changed after the AI challenge:**
-- Added example question chips to the UI (tap instead of type)
-- Improved the not-found message to include "check with your Quality / Maintenance / Safety owner"
-- Added an honest limitations section to the README about hallucination risk
-- Added the superseded-revision banner (the improvement I chose — see below)
+**What I'd ask the customer**
+1. How many documents exist, and are any scanned?
+2. Which languages do supervisors prefer?
+3. Is there Wi-Fi everywhere on the floor, or must it work offline?
+4. Who owns SOP updates, and how often do they change?
+5. Do some documents need role-based access?
+6. Which questions have the highest safety stakes, so we can handle them more strictly?
 
----
+**Biggest challenge and how I handled it: PDF table parsing**
+The tables (alarms, sampling plan, BH-220 dimensions, PM schedule) are plain-text layouts, and `find_tables()` did not detect them. I wrote a text-based parser that detects tables by known header patterns and groups rows. The alarm table spans two pages with a repeated header, so I merged pages before parsing and matched alarm rows by their `AL-xxx` pattern rather than by line count. I also fixed a metadata bug: the maintenance manual mentions "SAF-SOP-003" in a cross-reference, so my doc-number regex labelled it wrongly. I now parse the document number from the filename first and only fall back to the text.
 
-## 4. The Improvement I Added, and Why
+**Other challenges**
+- **LLM rate limits:** The free Groq tier returned 429 errors during the 11-question eval. I added exponential backoff and a short delay between questions. A paid tier or a local model would be needed in production.
+- **Deployment on the local network:** [FILL honestly, for example: running uvicorn with `--host 0.0.0.0`, finding the laptop IP, allowing port 8000 through the firewall, phone and laptop on the same Wi-Fi.]
+- **Measured performance:** [FILL: one real response time you observed on your phone, or delete.]
 
-**Improvement: Verify-at-a-glance + Version Awareness**
-
-Under every answer, the app shows expandable source cards with:
-- The exact quoted passage from the document
-- Document name, revision number, and page
-- A yellow "Old version" banner when an answer touches a superseded revision
-
-**Why I chose this:**
-
-The AI challenge conversation made one thing very clear: supervisors act on safety and quality instructions immediately. If the app shows the right answer from the wrong revision, the consequences can be serious (wrong sample size, wrong quarantine location, wrong oil grade).
-
-The two-revision problem is real in this dataset: QC-SOP-014 exists as both Rev 03 (superseded) and Rev 04 (current). Rev 03 says inspect 5 samples for a lot of 91–500 pieces. Rev 04 says 13. If a supervisor acts on Rev 03, they under-inspect and may accept a defective lot.
-
-The source card solves two problems at once:
-1. **Verification**: The supervisor can see the exact sentence the answer came from, in under 5 seconds, without opening the PDF.
-2. **Version awareness**: The yellow banner makes it impossible to miss when an old revision also matched — and tells the supervisor which revision is current and when it took effect.
-
-This is the improvement most directly tied to the user journey: it reduces the risk of acting on wrong information, which is the supervisor's biggest fear.
-
----
-
-## 5. Final Reflection
-
-**What I'd build next:**
-
-1. **Voice input**: On a noisy shop floor with gloves on, typing is hard. A "tap and speak" button using the browser's Web Speech API would make the app much more usable.
-
-2. **Regional language support**: Many shop-floor supervisors in Tamil Nadu are more comfortable in Tamil than English. Adding a translation layer (query in Tamil → retrieve in English → answer translated back) would dramatically increase adoption.
-
-3. **Incremental indexing**: Right now, adding a new PDF requires rebuilding the entire index. A proper document store with incremental updates would make it practical for a real plant with dozens of documents updated regularly.
-
-4. **Authentication**: Anyone on the Wi-Fi can access the app. For a real deployment, even a simple PIN or QR-code login would be needed.
-
-5. **Feedback loop**: A thumbs up/down button on each answer, logged to a file. After a week, you can see which questions fail most often and fix the chunking or prompts.
-
-**What I'm unsure about:**
-
-- **Table parsing across PDFs I haven't seen**: My table parser is hand-tuned for these 4 PDFs. It detects tables by looking for known column header patterns ("Alarm", "Characteristic", "Frequency"). A different PDF with different headers would silently produce no table chunks. I would need a more general approach (e.g. detecting columnar text by x-position) for production use.
-
-- **The citation check**: I verify that the LLM's quoted phrase appears in the retrieved chunks. But the LLM can still hallucinate the answer text while quoting correctly. I am not fully confident the citation check catches all hallucinations — it catches the obvious ones.
-
-- **Threshold value**: I set SIMILARITY_THRESHOLD=0.30 based on the eval set of 11 questions. With more documents and more question types, this value may need retuning. I would want at least 50 test questions before trusting it.
-
-**What I'd ask the customer:**
-
-1. How many documents does the plant actually have? (4 is a demo; 400 changes the architecture.)
-2. Are any documents scanned images? (OCR pipeline needed.)
-3. What languages do supervisors prefer? (Tamil, Hindi, English?)
-4. Is there Wi-Fi on the shop floor, or would this need to work offline?
-5. What is the process for updating SOPs? (Who uploads new PDFs, how often?)
-6. Are there any documents that must never be shown to certain roles? (Access control.)
-
-**Biggest challenge and how I handled it:**
-
-The biggest challenge was **PDF table parsing**. The PDFs use plain text layout — there are no actual PDF table objects, just text formatted to look like tables. PyMuPDF's `find_tables()` returned nothing. I had to write a custom text-based parser that detects tables by their known column headers and groups lines into rows.
-
-The tricky part was the alarm table, which spans two pages. The first page ends mid-table (after AL-101) and the second page starts with a repeated header row. I handled this by merging all pages into one text string before parsing, then detecting alarm entries by their AL-XXX pattern rather than by line count.
-
-I also hit a metadata parsing bug: the MNT document's text contains the string "SAF-SOP-003" (in a cross-reference), so my doc_no regex was matching the wrong document. I fixed this by parsing doc_no from the filename first (most reliable) and only falling back to text if the filename doesn't match.
-
-The second biggest challenge was **Groq rate limiting** on the free tier. The eval runs 11 LLM calls in sequence and hits the 429 limit around call 5. I added exponential backoff (20s, 40s, 60s) and a 5-second delay between eval questions. For production, a paid tier or a locally-hosted model would be needed.
-
-**Final score: 10/11 eval questions pass.** The one failure (Q5: spindle runout limit 0.005 mm) is a prompt issue — the model answers correctly (monthly, maintenance technician) but omits the numeric limit. The value is in the retrieved context; a stronger prompt or a larger model would include it.
+**Eval result:** 10/11 questions pass. [FILL: note any failure and why. If Q5 is "failing" only because the numeric limit wasn't included, say the check was stricter than the question.]
